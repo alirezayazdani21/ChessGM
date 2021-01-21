@@ -1,0 +1,67 @@
+#https://en.wikipedia.org/wiki/List_of_chess_grandmasters
+
+library(rvest)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(rchess)
+
+gmurl <- "https://en.wikipedia.org/wiki/List_of_chess_grandmasters"
+
+page <- gmurl %>% 
+  read_html %>%
+  html_nodes("table")
+
+page_html<-html_table(page[1])
+
+#rpivotTable::rpivotTable(df)
+raw_df<- page_html[[1]]
+
+df<- page_html[[1]] %>% 
+  rename(Country="Most recentfederation",Gender="M/F") %>% 
+  select(Country,Gender) %>% mutate(id=1) %>%
+  pivot_wider(names_from=Gender,values_from =id,values_fn = sum) %>% 
+  replace_na(list(M=0, F=0)) %>% 
+  mutate(Total=M+F) %>% arrange(desc(Total)) %>% 
+  filter(Total >= 10) #filter with total >= 10 to avoid crowdedness
+
+
+p1<-ggplot(df, aes(x = reorder(Country,M), y = M, fill=M)) +
+  geom_bar(stat = "identity", width=0.4) +
+  coord_flip() +
+  xlab("")+ ylab("")+
+  theme(axis.text.y=element_text(size=rel(0.9), colour=1, angle=0),
+        plot.background = element_rect(fill = "gray90"),
+        legend.position = "none")+
+  theme(text = element_text(family = "Arial Unicode MS"))+
+  ggtitle(sprintf("\u265A Male Chess GM by Country"))
+
+
+df_F<-df %>% filter(F>=1) %>% select(Country, F) %>% arrange(desc(F))
+
+p2<-ggplot(df_F, aes(x = reorder(Country,F), y = F,  fill=F)) +
+  geom_bar(stat = "identity", width=0.3) +
+  coord_flip() +
+  theme_gray()+
+  xlab("")+ ylab("")+
+  theme(axis.text.y=element_text(size=rel(0.9),colour=1, angle=0), 
+        plot.background = element_rect(fill = "gray95"),
+        legend.position = "none")+
+  ggtitle("\u265B Female GM by Country")
+
+chssboard <- Chess$new("4k3/8/4K3/8/8/8/8/8 b - - 0 78")
+#plot(rchess::Chess$new(),type = "ggplot")
+
+p3<- plot(chssboard,type = "ggplot")+
+  xlab("")+ylab("")+
+  theme(axis.text.y=element_text(size=rel(0.5),colour=1, angle=0),
+        axis.text.x=element_text(size=rel(0.5),colour=1, angle=0),
+        plot.background = element_rect(fill = "gray95"),
+        legend.position = "none")
+
+p1 + annotation_custom(ggplotGrob(p2), xmin = 2, xmax = 25, ymin = 75, ymax = 250)+
+  annotation_custom(ggplotGrob(p3), xmin = 26, xmax = 46, ymin = 150, ymax = 250)
+
+
+
+
